@@ -1,4 +1,4 @@
-# what-have-i-been-working-on (WHIBO)
+# what-have-i-been-working-on (whibo)
 
 List all your recent work in git repos. Perfect for bad time-trackers and will-do-it-laters.
 
