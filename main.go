@@ -28,6 +28,7 @@ const (
 	colorReset  = "\033[0m"
 	colorYellow = "\033[33m"
 	colorRed    = "\033[31m"
+	colorCyan   = "\033[36m"
 )
 
 func main() {
@@ -104,13 +105,14 @@ func setupPath() string {
 }
 
 func setupAuthors() []string {
-	allAuthors := strings.Split(*authorsFlag, ",")
-	if len(allAuthors) == 0 {
+	if *authorsFlag == "" {
 		output, err := exec.Command("git", "config", "user.name").Output()
 		must(err)
-		allAuthors = append(allAuthors, string(output))
-		log.Println("authorsFlag not set, setting the default git username")
+		username := string(output)
+		log.Println("authorsFlag not set, setting the default git username", username)
+		return []string{username}
 	}
+	allAuthors := strings.Split(*authorsFlag, ",")
 	return allAuthors
 }
 
@@ -130,7 +132,7 @@ func outputAuthorCommits(branch string, output []byte, allAuthors []string) {
 		commitName := match[3]
 
 		if isAuthor(allAuthors, author) {
-			fmt.Println("\t- ", colorGreen, branch, colorReset, date, colorYellow, commitName, colorReset)
+			fmt.Println("\t- ", colorCyan, author, colorGreen, branch, colorReset, date, colorYellow, commitName, colorReset)
 		}
 	}
 }
