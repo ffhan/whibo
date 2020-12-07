@@ -16,10 +16,18 @@ import (
 )
 
 var (
-	logRgx = regexp.MustCompile("Author: (.*)\\nDate:[ ]+(.*)[ \\n]+(.*)")
+	logRgx    = regexp.MustCompile("Author: (.*)\\nDate:[ ]+(.*)[ \\n]+(.*)")
+	branchRgx = regexp.MustCompile("[ ]+(.*)")
 
 	sinceFlag   = flag.String("since", "7", "how many days before today")
 	authorsFlag = flag.String("authors", "", "authors separated by a comma")
+)
+
+const (
+	colorGreen  = "\033[32m"
+	colorReset  = "\033[0m"
+	colorYellow = "\033[33m"
+	colorRed    = "\033[31m"
 )
 
 func main() {
@@ -35,21 +43,46 @@ func main() {
 	dir, err := ioutil.ReadDir(path)
 	must(err)
 
+dirLoop:
 	for _, d := range dir {
 		if d.IsDir() && time.Now().Sub(d.ModTime()) <= since {
-			fmt.Printf("-----------------------%s-----------------------\n", d.Name())
+			dirName := d.Name()
+			fmt.Printf("-----------------------%s-----------------------\n", dirName)
 
-			target := filepath.Join(path, d.Name())
-			output, err := gitLog(since, target)
-			if err != nil {
-				failed[d.Name()] = err
+			target := filepath.Join(path, dirName)
+			branches, err := gitBranches(target)
+			if !handleError(dirName, err, failed) {
 				continue
 			}
-			outputAuthorCommits(output, allAuthors)
+
+			for _, branch := range branches {
+				output, err := gitLog(since, target, branch)
+				if !handleError(dirName, err, failed) {
+					continue dirLoop
+				}
+				outputAuthorCommits(branch, output, allAuthors)
+			}
 		}
 	}
 
 	printFailed(failed)
+}
+
+func gitBranches(target string) ([]string, error) {
+	cmd := exec.Command("git", "branch", "-l")
+	cmd.Dir = target
+
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	branches := branchRgx.FindAllStringSubmatch(string(output), -1)
+
+	result := make([]string, len(branches))
+	for i, branch := range branches {
+		result[i] = branch[1]
+	}
+	return result, nil
 }
 
 func setupSince() time.Duration {
@@ -81,14 +114,14 @@ func setupAuthors() []string {
 	return allAuthors
 }
 
-func gitLog(since time.Duration, target string) ([]byte, error) {
-	cmd := exec.Command("git", "log", fmt.Sprintf("--since=\"%d days ago\"", int(math.Round(since.Hours()/24))))
+func gitLog(since time.Duration, target, branch string) ([]byte, error) {
+	cmd := exec.Command("git", "log", branch, fmt.Sprintf("--since=\"%d days ago\"", int(math.Round(since.Hours()/24))))
 	cmd.Dir = target
 	output, err := cmd.Output()
 	return output, err
 }
 
-func outputAuthorCommits(output []byte, allAuthors []string) {
+func outputAuthorCommits(branch string, output []byte, allAuthors []string) {
 	commits := logRgx.FindAllStringSubmatch(string(output), -1)
 
 	for _, match := range commits {
@@ -97,15 +130,15 @@ func outputAuthorCommits(output []byte, allAuthors []string) {
 		commitName := match[3]
 
 		if isAuthor(allAuthors, author) {
-			fmt.Println("\t- ", date, commitName)
+			fmt.Println("\t- ", colorGreen, branch, colorReset, date, colorYellow, commitName, colorReset)
 		}
 	}
 }
 
 func printFailed(failed map[string]error) {
-	fmt.Println("\nFailed: ")
+	fmt.Println(colorRed, "\nFailed: ")
 	for name, err := range failed {
-		fmt.Printf("\t* %s: %v\n", name, err)
+		fmt.Printf("\t* %s: %v\n%s", name, err, colorReset)
 	}
 }
 
@@ -122,4 +155,13 @@ func must(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// if true - no error, false - error occurred
+func handleError(target string, err error, failed map[string]error) bool {
+	if err != nil {
+		failed[target] = err
+		return false
+	}
+	return true
 }
