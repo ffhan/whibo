@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,14 +18,16 @@ import (
 var (
 	logRgx = regexp.MustCompile("Author: (.*)\\nDate:[ ]+(.*)[ \\n]+(.*)")
 
-	since   = flag.Duration("since", 7*24*time.Hour, "git commit since when")
-	authors = flag.String("authors", "", "authors separated by a comma")
+	sinceFlag   = flag.String("since", "7", "how many days before today")
+	authorsFlag = flag.String("authors", "", "authors separated by a comma")
 )
 
 func main() {
 	flag.Parse()
 
 	failed := make(map[string]error)
+
+	since := setupSince()
 
 	path := setupPath()
 	allAuthors := setupAuthors()
@@ -33,11 +36,11 @@ func main() {
 	must(err)
 
 	for _, d := range dir {
-		if d.IsDir() && time.Now().Sub(d.ModTime()) <= *since {
+		if d.IsDir() && time.Now().Sub(d.ModTime()) <= since {
 			fmt.Printf("-----------------------%s-----------------------\n", d.Name())
 
 			target := filepath.Join(path, d.Name())
-			output, err := gitLog(target)
+			output, err := gitLog(since, target)
 			if err != nil {
 				failed[d.Name()] = err
 				continue
@@ -47,6 +50,12 @@ func main() {
 	}
 
 	printFailed(failed)
+}
+
+func setupSince() time.Duration {
+	days, err := strconv.Atoi(*sinceFlag)
+	must(err)
+	return time.Duration(days) * 24 * time.Hour
 }
 
 func setupPath() string {
@@ -62,17 +71,17 @@ func setupPath() string {
 }
 
 func setupAuthors() []string {
-	allAuthors := strings.Split(*authors, ",")
+	allAuthors := strings.Split(*authorsFlag, ",")
 	if len(allAuthors) == 0 {
 		output, err := exec.Command("git", "config", "user.name").Output()
 		must(err)
 		allAuthors = append(allAuthors, string(output))
-		log.Println("authors not set, setting the default git username")
+		log.Println("authorsFlag not set, setting the default git username")
 	}
 	return allAuthors
 }
 
-func gitLog(target string) ([]byte, error) {
+func gitLog(since time.Duration, target string) ([]byte, error) {
 	cmd := exec.Command("git", "log", fmt.Sprintf("--since=\"%d days ago\"", int(math.Round(since.Hours()/24))))
 	cmd.Dir = target
 	output, err := cmd.Output()
@@ -102,7 +111,7 @@ func printFailed(failed map[string]error) {
 
 func isAuthor(authors []string, currentAuthor string) bool {
 	for _, author := range authors {
-		if strings.Contains(currentAuthor, author) {
+		if strings.Contains(strings.ToUpper(currentAuthor), strings.ToUpper(author)) {
 			return true
 		}
 	}
