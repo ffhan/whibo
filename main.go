@@ -73,9 +73,9 @@ func gitBranches(target string) ([]string, error) {
 	cmd := exec.Command("git", "branch", "-l")
 	cmd.Dir = target
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%v: %s", err, strings.ReplaceAll(string(output), "\n", "; "))
 	}
 	branches := branchRgx.FindAllStringSubmatch(string(output), -1)
 
@@ -119,8 +119,11 @@ func setupAuthors() []string {
 func gitLog(since time.Duration, target, branch string) ([]byte, error) {
 	cmd := exec.Command("git", "log", branch, fmt.Sprintf("--since=\"%d days ago\"", int(math.Round(since.Hours()/24))))
 	cmd.Dir = target
-	output, err := cmd.Output()
-	return output, err
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%v: %s", err, strings.ReplaceAll(string(output), "\n", "; "))
+	}
+	return output, nil
 }
 
 func outputAuthorCommits(branch string, output []byte, allAuthors []string) {
