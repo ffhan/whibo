@@ -76,12 +76,12 @@ func getTerminalWidth() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	split := strings.Split(string(out), " ")
+	split := strings.Split(strings.Trim(string(out), "\n"), " ")
 
 	if len(split) != 2 {
 		return 0, errors.New("unexpected stty size output")
 	}
-	return strconv.Atoi(split[0])
+	return strconv.Atoi(split[1])
 }
 
 type shellWriter struct {

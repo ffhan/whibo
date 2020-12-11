@@ -4,13 +4,17 @@ List all your recent work in git repos. Perfect for bad time-trackers and will-d
 
 ## Usage
 
-* `go run main.go -since 14 -authors 'author1,author2' ~/work`
-    * lists all your work in the last 14 days, targetting author1 or author2 git commit authors
-* `whibo -since 14 -authors 'author1,author2' ~/work`
+* `go run ./ -since 14 -authors 'author1,author2' ~/work` when in project root
+    * lists all your work in the last 14 days, targetting author1 or author2 (case insensitive) git commit authors
+* `whibo -since 2 -authors 'author1,author2' ~/work`
+* `whibo -since 7 --group-by-branches ~/work` - get author name from git config, group commits by branches
+* `whibo -since 14 -authors thisAuthor -o yaml` - get yaml output of commits in the last 14 days, matching case
+  insensitive author name
 
 ## Installation
 
-* `go build -o whibo main.go`
+* position to the project root directory
+* `go build -o whibo`
 * `sudo cp whibo /usr/local/bin/`
 * `whibo -h`
 
