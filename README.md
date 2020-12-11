@@ -10,6 +10,11 @@ List all your recent work in git repos. Perfect for bad time-trackers and will-d
 * `whibo -since 7 -group-by-branches ~/work` - get author name from git config, group commits by branches
 * `whibo -since 14 -authors thisAuthor -o yaml` - get yaml output of commits in the last 14 days, matching case
   insensitive author name
+  
+Supported outputs:
+* shell
+* yaml
+* json
 
 ## Installation
 
