@@ -52,7 +52,7 @@ failed:
   schach: {}
 projects:
 - name: taskio
-  path: /home/fhancic/programming/taskio
+  path: /home/user/example/taskio
   branches:
   - name: master
     commits:
@@ -73,7 +73,7 @@ projects:
       date: !!timestamp 2020-12-03T17:17:30+01:00
       hash: 90b6959b8967111bd4f03c48664ec1f8da1657b8
 - name: what-have-i-been-working-on
-  path: /home/fhancic/programming/what-have-i-been-working-on
+  path: /home/user/example/what-have-i-been-working-on
   branches:
   - name: master
     commits:
@@ -102,7 +102,7 @@ projects:
   "projects": [
     {
       "name": "taskio",
-      "path": "/home/fhancic/programming/taskio",
+      "path": "/home/user/example/taskio",
       "branches": [
         {
           "name": "master",
@@ -137,7 +137,7 @@ projects:
     },
     {
       "name": "what-have-i-been-working-on",
-      "path": "/home/fhancic/programming/what-have-i-been-working-on",
+      "path": "/home/user/example/what-have-i-been-working-on",
       "branches": [
         {
           "name": "master",
