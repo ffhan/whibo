@@ -136,16 +136,16 @@ func (s *shellWriter) Write(result *Result) error {
 		_, _ = fmt.Fprintf(os.Stderr, "couldn't get terminal width, assumed width of 80: %v\n", err)
 	}
 	for _, project := range result.Projects {
-		if err = s.printProjectHeader(&project, width); err != nil {
+		if err = s.printProjectHeader(project, width); err != nil {
 			return err
 		}
 
 		if *groupByBranch {
-			if err := s.printGroupedByBranch(&project); err != nil {
+			if err := s.printGroupedByBranch(project); err != nil {
 				return err
 			}
 		} else {
-			if err := s.printSortedByDate(&project); err != nil {
+			if err := s.printSortedByDate(project); err != nil {
 				return err
 			}
 		}
@@ -195,7 +195,7 @@ func (s *shellWriter) getCommits(project *Project) []ExpandedCommit {
 	for _, branch := range project.Branches {
 		for _, commit := range branch.Commits {
 			commits = append(commits, ExpandedCommit{
-				Commit:     commit,
+				Commit:     *commit,
 				BranchName: branch.Name,
 			})
 		}

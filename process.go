@@ -4,52 +4,45 @@ import "time"
 
 type Result struct {
 	Failed   map[string]error `json:"failed" yaml:"failed"`
-	Projects []Project        `json:"projects" yaml:"projects"`
+	Projects []*Project       `json:"projects" yaml:"projects"`
 }
 
 func NewResult() *Result {
 	return &Result{
 		Failed:   make(map[string]error),
-		Projects: make([]Project, 0, 4),
+		Projects: make([]*Project, 0, 4),
 	}
 }
 
-func (r *Result) AddProject(name, path string) *Project {
-	r.Projects = append(r.Projects, Project{
-		Name:     name,
-		Path:     path,
-		Branches: make([]Branch, 0, 4),
-	})
-	return &r.Projects[len(r.Projects)-1]
+func (r *Result) AddProject(project *Project) {
+	r.Projects = append(r.Projects, project)
 }
 
 type Project struct {
-	Name     string   `json:"name" yaml:"name"`
-	Path     string   `json:"path" yaml:"path"`
-	Branches []Branch `json:"branches" yaml:"branches"`
+	Name     string    `json:"name" yaml:"name"`
+	Path     string    `json:"path" yaml:"path"`
+	Branches []*Branch `json:"branches" yaml:"branches"`
 }
 
-func (p *Project) AddBranch(name string) *Branch {
-	p.Branches = append(p.Branches, Branch{
-		Name:    name,
-		Commits: make([]Commit, 0, 4),
-	})
-	return &p.Branches[len(p.Branches)-1]
+func NewProject(name string, path string) *Project {
+	return &Project{Name: name, Path: path, Branches: make([]*Branch, 0, 4)}
+}
+
+func (p *Project) AddBranch(branch *Branch) {
+	p.Branches = append(p.Branches, branch)
 }
 
 type Branch struct {
-	Name    string   `json:"name" yaml:"name"`
-	Commits []Commit `json:"commits" yaml:"commits"`
+	Name    string    `json:"name" yaml:"name"`
+	Commits []*Commit `json:"commits" yaml:"commits"`
 }
 
-func (b *Branch) AddCommit(name, author, hash string, date time.Time) *Commit {
-	b.Commits = append(b.Commits, Commit{
-		Name:   name,
-		Author: author,
-		Date:   date,
-		Hash:   hash,
-	})
-	return &b.Commits[len(b.Commits)-1]
+func NewBranch(name string) *Branch {
+	return &Branch{Name: name, Commits: make([]*Commit, 0, 4)}
+}
+
+func (b *Branch) AddCommit(commit *Commit) {
+	b.Commits = append(b.Commits, commit)
 }
 
 type Commit struct {
@@ -57,4 +50,8 @@ type Commit struct {
 	Author string    `json:"author" yaml:"author"`
 	Date   time.Time `json:"date" yaml:"date"`
 	Hash   string    `json:"hash" yaml:"hash"`
+}
+
+func NewCommit(name string, author string, date time.Time, hash string) *Commit {
+	return &Commit{Name: name, Author: author, Date: date, Hash: hash}
 }

@@ -53,7 +53,8 @@ dirLoop:
 			dirName := d.Name()
 
 			target := filepath.Join(path, dirName)
-			project := result.AddProject(dirName, target)
+			project := NewProject(dirName, target)
+			projectHasBranches := false
 
 			branches, err := gitBranches(target)
 			if !handleError(dirName, err, result.Failed) {
@@ -61,12 +62,18 @@ dirLoop:
 			}
 
 			for _, branchName := range branches {
-				branch := project.AddBranch(branchName)
+				branch := NewBranch(branchName)
 				output, err := gitLog(since, target, branchName)
 				if !handleError(dirName, err, result.Failed) {
 					continue dirLoop
 				}
-				parseCommits(result, project, branch, output, allAuthors)
+				if parseCommits(result, project, branch, output, allAuthors) {
+					project.AddBranch(branch)
+					projectHasBranches = true
+				}
+			}
+			if projectHasBranches {
+				result.AddProject(project)
 			}
 		}
 	}
@@ -131,9 +138,10 @@ func gitLog(since time.Duration, target, branch string) ([]byte, error) {
 	return output, nil
 }
 
-func parseCommits(result *Result, project *Project, branch *Branch, output []byte, allAuthors []string) {
+func parseCommits(result *Result, project *Project, branch *Branch, output []byte, allAuthors []string) bool {
 	commits := logRgx.FindAllStringSubmatch(string(output), -1)
 
+	branchHasCommits := false
 	for _, match := range commits {
 		hash := match[1]
 		author := match[2]
@@ -142,13 +150,15 @@ func parseCommits(result *Result, project *Project, branch *Branch, output []byt
 
 		parsedDate, err := time.Parse("Mon Jan 2 15:04:05 2006 -0700", date)
 		if !handleError(project.Name, err, result.Failed) {
-			return
+			return branchHasCommits
 		}
 
 		if isAuthor(allAuthors, author) {
-			branch.AddCommit(commitName, author, hash, parsedDate)
+			branch.AddCommit(NewCommit(commitName, author, parsedDate, hash))
+			branchHasCommits = true
 		}
 	}
+	return branchHasCommits
 }
 
 func isAuthor(authors []string, currentAuthor string) bool {
