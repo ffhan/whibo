@@ -16,25 +16,26 @@ import (
 )
 
 var (
-	logRgx    = regexp.MustCompile("Author: (.*)\\nDate:[ ]+(.*)[ \\n]+(.*)")
+	logRgx    = regexp.MustCompile("commit (\\w+).*\\nAuthor: (.*)\\nDate:[ ]+(.*)[ \\n]+(.*)")
 	branchRgx = regexp.MustCompile("[ ]+(.*)")
 
-	sinceFlag   = flag.String("since", "7", "how many days before today")
-	authorsFlag = flag.String("authors", "", "authors separated by a comma")
+	sinceFlag     = flag.String("since", "7", "how many days before today")
+	authorsFlag   = flag.String("authors", "", "authors separated by a comma")
+	outputFlag    = flag.String("o", "shell", "output format (supported shell, json, yaml)")
+	groupByBranch = flag.Bool("group-by-branch", false, groupByBranchDesc)
 )
 
 const (
-	colorGreen  = "\033[32m"
-	colorReset  = "\033[0m"
-	colorYellow = "\033[33m"
-	colorRed    = "\033[31m"
-	colorCyan   = "\033[36m"
+	groupByBranchDesc = "group by branches - if false commits will be sorted by date without grouping by branch"
+	colorGreen        = "\033[32m"
+	colorReset        = "\033[0m"
+	colorYellow       = "\033[33m"
+	colorRed          = "\033[31m"
+	colorCyan         = "\033[36m"
 )
 
 func main() {
 	flag.Parse()
-
-	failed := make(map[string]error)
 
 	since := setupSince()
 
@@ -44,29 +45,33 @@ func main() {
 	dir, err := ioutil.ReadDir(path)
 	must(err)
 
+	result := NewResult()
+
 dirLoop:
 	for _, d := range dir {
 		if d.IsDir() && time.Now().Sub(d.ModTime()) <= since {
 			dirName := d.Name()
-			fmt.Printf("-----------------------%s-----------------------\n", dirName)
 
 			target := filepath.Join(path, dirName)
+			project := result.AddProject(dirName, target)
+
 			branches, err := gitBranches(target)
-			if !handleError(dirName, err, failed) {
+			if !handleError(dirName, err, result.Failed) {
 				continue
 			}
 
-			for _, branch := range branches {
-				output, err := gitLog(since, target, branch)
-				if !handleError(dirName, err, failed) {
+			for _, branchName := range branches {
+				branch := project.AddBranch(branchName)
+				output, err := gitLog(since, target, branchName)
+				if !handleError(dirName, err, result.Failed) {
 					continue dirLoop
 				}
-				outputAuthorCommits(branch, output, allAuthors)
+				parseCommits(result, project, branch, output, allAuthors)
 			}
 		}
 	}
 
-	printFailed(failed)
+	must(WriteOutput(result, os.Stdout, OutputType(*outputFlag)))
 }
 
 func gitBranches(target string) ([]string, error) {
@@ -126,24 +131,23 @@ func gitLog(since time.Duration, target, branch string) ([]byte, error) {
 	return output, nil
 }
 
-func outputAuthorCommits(branch string, output []byte, allAuthors []string) {
+func parseCommits(result *Result, project *Project, branch *Branch, output []byte, allAuthors []string) {
 	commits := logRgx.FindAllStringSubmatch(string(output), -1)
 
 	for _, match := range commits {
-		author := match[1]
-		date := match[2]
-		commitName := match[3]
+		hash := match[1]
+		author := match[2]
+		date := match[3]
+		commitName := match[4]
+
+		parsedDate, err := time.Parse("Mon Jan 2 15:04:05 2006 -0700", date)
+		if !handleError(project.Name, err, result.Failed) {
+			return
+		}
 
 		if isAuthor(allAuthors, author) {
-			fmt.Println("\t- ", colorCyan, author, colorGreen, branch, colorReset, date, colorYellow, commitName, colorReset)
+			branch.AddCommit(commitName, author, hash, parsedDate)
 		}
-	}
-}
-
-func printFailed(failed map[string]error) {
-	fmt.Println(colorRed, "\nFailed: ")
-	for name, err := range failed {
-		fmt.Printf("\t* %s: %v\n%s", name, err, colorReset)
 	}
 }
 
